@@ -56,7 +56,14 @@ public class PosDaoSong implements PosDao {
 		        stmt.setString(2, cust.getPhone());
 		        stmt.setInt(3, cust.getPoint());
 
-		        stmt.executeUpdate();
+		        int result = stmt.executeUpdate();
+		        
+		        if (result == 0) {
+		            throw new CanNotSaveException();
+		        }
+		} catch (SQLException e) {
+	        throw new CanNotSaveException();
+
 			
 		} finally {
 			dbutil.close(stmt, con);
@@ -77,7 +84,14 @@ public class PosDaoSong implements PosDao {
 	        stmt.setInt(1, amount);
 	        stmt.setInt(2, bookId);
 
-	        stmt.executeUpdate();
+	        int result = stmt.executeUpdate();
+
+	        if (result == 0) {
+	            throw new CanNotSaveException();
+	        }
+		 } catch (SQLException e) {
+		        throw new CanNotSaveException();
+
 			
 		} finally {
 			dbutil.close(stmt, con);
