@@ -1,12 +1,16 @@
 package com.ureca.pos.view;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -17,11 +21,24 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
 
 import com.ureca.pos.model.dto.Customer;
 import com.ureca.pos.model.service.PosService;
 
 public class PosUI extends JFrame {
+	private static final Color BG = new Color(245, 247, 250);
+	private static final Color PANEL_BG = Color.WHITE;
+	private static final Color TEXT = new Color(31, 41, 55);
+	private static final Color SUB_TEXT = new Color(107, 114, 128);
+	private static final Color PRIMARY = new Color(219, 234, 254);
+	private static final Color PRIMARY_DARK = new Color(147, 197, 253);
+	private static final Font BASE_FONT = new Font("Malgun Gothic", Font.PLAIN, 13);
+	private static final Font BUTTON_FONT = new Font("Malgun Gothic", Font.BOLD, 14);
+	private static final Font TITLE_FONT = new Font("Malgun Gothic", Font.BOLD, 22);
+	private static final Font SECTION_FONT = new Font("Malgun Gothic", Font.BOLD, 15);
+
 	private PosService service;
 
 	private JTextField searchPhoneTf;
@@ -30,22 +47,23 @@ public class PosUI extends JFrame {
 	private JTextField addPhoneTf;
 	private JTextField addPointTf;
 
-	private JTextField stockBookIdTf;
+	private JTextField stockGoodsIdTf;
 	private JTextField stockAmountTf;
-	private JTextField expiryBookIdTf;
+	private JTextField expiryGoodsIdTf;
 
 	private JTextField payCustIdTf;
-	private JTextField payBookIdTf;
+	private JTextField payGoodsIdTf;
 	private JTextField payQuantityTf;
 	private JTextField payTotalPriceTf;
 
 	private JTextArea logTa;
 
 	public PosUI() {
-		super("POS DB Simple UI");
+		super("상품 POS");
+		setupLookAndFeel();
 		buildView();
-		setSize(720, 520);
-		setMinimumSize(new Dimension(640, 460));
+		setSize(820, 620);
+		setMinimumSize(new Dimension(720, 540));
 		setLocationRelativeTo(null);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
@@ -58,96 +76,198 @@ public class PosUI extends JFrame {
 		SwingUtilities.invokeLater(() -> setVisible(true));
 	}
 
-	private void buildView() {
-		JTabbedPane tabs = new JTabbedPane();
-		tabs.addTab("Customer", customerPanel());
-		tabs.addTab("Product", productPanel());
-		tabs.addTab("Payment", paymentPanel());
+	private void setupLookAndFeel() {
+		try {
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+			UIManager.put("Label.font", BASE_FONT);
+			UIManager.put("Button.font", BASE_FONT);
+			UIManager.put("TextField.font", BASE_FONT);
+			UIManager.put("TextArea.font", BASE_FONT);
+			UIManager.put("TabbedPane.font", BASE_FONT);
+		} catch (Exception e) {
+			// Keep Swing's default look and feel if the system one is unavailable.
+		}
+	}
 
-		logTa = new JTextArea();
+	private void buildView() {
+		JPanel root = new JPanel(new BorderLayout(0, 14));
+		root.setBackground(BG);
+		root.setBorder(new EmptyBorder(18, 20, 18, 20));
+
+		root.add(headerPanel(), BorderLayout.NORTH);
+
+		JTabbedPane tabs = new JTabbedPane();
+		tabs.setBackground(BG);
+		tabs.addTab("회원", customerPanel());
+		tabs.addTab("상품", productPanel());
+		tabs.addTab("결제", paymentPanel());
+		root.add(tabs, BorderLayout.CENTER);
+
+		logTa = new JTextArea(7, 20);
 		logTa.setEditable(false);
 		logTa.setLineWrap(true);
 		logTa.setWrapStyleWord(true);
+		logTa.setForeground(TEXT);
+		logTa.setBackground(new Color(249, 250, 251));
+		logTa.setBorder(new EmptyBorder(10, 10, 10, 10));
 
 		JScrollPane logScroll = new JScrollPane(logTa);
-		logScroll.setPreferredSize(new Dimension(720, 130));
-		logScroll.setBorder(BorderFactory.createTitledBorder("Result"));
+		logScroll.setBorder(BorderFactory.createTitledBorder("처리 결과"));
+		root.add(logScroll, BorderLayout.SOUTH);
 
-		add(tabs, BorderLayout.CENTER);
-		add(logScroll, BorderLayout.SOUTH);
+		setContentPane(root);
+	}
+
+	private JPanel headerPanel() {
+		JPanel panel = new JPanel(new BorderLayout());
+		panel.setOpaque(false);
+
+		JLabel title = new JLabel("상품 POS 관리");
+		title.setFont(TITLE_FONT);
+		title.setForeground(TEXT);
+
+		JLabel subtitle = new JLabel("회원 조회, 상품 재고, 결제를 한 화면에서 확인합니다.");
+		subtitle.setFont(BASE_FONT);
+		subtitle.setForeground(SUB_TEXT);
+
+		JPanel textPanel = new JPanel(new BorderLayout(0, 4));
+		textPanel.setOpaque(false);
+		textPanel.add(title, BorderLayout.NORTH);
+		textPanel.add(subtitle, BorderLayout.CENTER);
+
+		JButton clearLogBt = secondaryButton("로그 지우기");
+		clearLogBt.addActionListener(e -> logTa.setText(""));
+
+		panel.add(textPanel, BorderLayout.CENTER);
+		panel.add(clearLogBt, BorderLayout.EAST);
+		return panel;
 	}
 
 	private JPanel customerPanel() {
-		JPanel panel = formPanel();
+		JPanel panel = tabPanel();
 
-		searchPhoneTf = new JTextField(18);
-		JButton searchBt = new JButton("Search by phone");
+		JPanel search = sectionPanel("회원 조회");
+		searchPhoneTf = textField();
+		JButton searchBt = primaryButton("조회");
 		searchBt.addActionListener(e -> searchCustomer());
+		addRow(search, 0, "전화번호", searchPhoneTf, searchBt);
 
-		addNameTf = new JTextField(18);
-		addAddressTf = new JTextField(18);
-		addPhoneTf = new JTextField(18);
-		addPointTf = new JTextField("0", 18);
-		JButton addBt = new JButton("Add customer");
+		JPanel add = sectionPanel("신규 회원 등록");
+		addNameTf = textField();
+		addAddressTf = textField();
+		addPhoneTf = textField();
+		addPointTf = textField("0");
+		JButton addBt = primaryButton("등록");
 		addBt.addActionListener(e -> addCustomer());
+		addRow(add, 0, "이름", addNameTf, null);
+		addRow(add, 1, "주소", addAddressTf, null);
+		addRow(add, 2, "전화번호", addPhoneTf, null);
+		addRow(add, 3, "포인트", addPointTf, addBt);
 
-		addRow(panel, 0, "Phone", searchPhoneTf, searchBt);
-		addRow(panel, 1, "Name", addNameTf, null);
-		addRow(panel, 2, "Address", addAddressTf, null);
-		addRow(panel, 3, "New phone", addPhoneTf, null);
-		addRow(panel, 4, "Point", addPointTf, addBt);
+		addSection(panel, search);
+		addSection(panel, add);
 		return panel;
 	}
 
 	private JPanel productPanel() {
-		JPanel panel = formPanel();
+		JPanel panel = tabPanel();
 
-		stockBookIdTf = new JTextField(18);
-		stockAmountTf = new JTextField(18);
-		JButton stockBt = new JButton("Add stock");
+		JPanel stock = sectionPanel("상품 입고");
+		stockGoodsIdTf = textField();
+		stockAmountTf = textField();
+		JButton stockBt = primaryButton("재고 추가");
 		stockBt.addActionListener(e -> updateStock());
+		addRow(stock, 0, "상품 아이디", stockGoodsIdTf, null);
+		addRow(stock, 1, "입고 수량", stockAmountTf, stockBt);
 
-		expiryBookIdTf = new JTextField(18);
-		JButton expiryBt = new JButton("Check expiry");
+		JPanel expiry = sectionPanel("유통기한 확인");
+		expiryGoodsIdTf = textField();
+		JButton expiryBt = primaryButton("확인");
 		expiryBt.addActionListener(e -> checkExpiry());
+		addRow(expiry, 0, "상품 아이디", expiryGoodsIdTf, expiryBt);
 
-		addRow(panel, 0, "입고 굿즈 아이디", stockBookIdTf, null);
-		addRow(panel, 1, "Stock amount", stockAmountTf, stockBt);
-		addRow(panel, 2, "유통기한 굿즈 아이디", expiryBookIdTf, expiryBt);
+		addSection(panel, stock);
+		addSection(panel, expiry);
 		return panel;
 	}
 
 	private JPanel paymentPanel() {
-		JPanel panel = formPanel();
+		JPanel panel = tabPanel();
 
-		payCustIdTf = new JTextField(18);
-		payBookIdTf = new JTextField(18);
-		payQuantityTf = new JTextField(18);
-		payTotalPriceTf = new JTextField(18);
-		JButton payBt = new JButton("Pay");
+		JPanel payment = sectionPanel("결제 처리");
+		payCustIdTf = textField();
+		payGoodsIdTf = textField();
+		payQuantityTf = textField();
+		payTotalPriceTf = textField();
+		JButton payBt = primaryButton("결제");
 		payBt.addActionListener(e -> processPayment());
+		addRow(payment, 0, "회원 아이디", payCustIdTf, null);
+		addRow(payment, 1, "상품 아이디", payGoodsIdTf, null);
+		addRow(payment, 2, "수량", payQuantityTf, null);
+		addRow(payment, 3, "총 금액", payTotalPriceTf, payBt);
 
-		addRow(panel, 0, "Customer id", payCustIdTf, null);
-		addRow(panel, 1, "굿즈 아이디", payBookIdTf, null);
-		addRow(panel, 2, "Quantity", payQuantityTf, null);
-		addRow(panel, 3, "Total price", payTotalPriceTf, payBt);
+		addSection(panel, payment);
 		return panel;
 	}
 
-	private JPanel formPanel() {
+	private JPanel tabPanel() {
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+		panel.setBackground(BG);
+		panel.setBorder(new EmptyBorder(16, 0, 0, 0));
+		return panel;
+	}
+
+	private void addSection(JPanel parent, JPanel section) {
+		section.setAlignmentX(LEFT_ALIGNMENT);
+		section.setMaximumSize(new Dimension(Integer.MAX_VALUE, section.getPreferredSize().height));
+		parent.add(section);
+		parent.add(Box.createVerticalStrut(14));
+	}
+
+	private JPanel sectionPanel(String titleText) {
 		JPanel panel = new JPanel(new GridBagLayout());
-		panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+		panel.setBackground(PANEL_BG);
+		panel.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(229, 231, 235)),
+				new EmptyBorder(18, 18, 18, 18)));
+
+		JLabel title = new JLabel(titleText);
+		title.setFont(SECTION_FONT);
+		title.setForeground(TEXT);
+
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.gridx = 0;
+		gbc.gridy = 0;
+		gbc.gridwidth = 3;
+		gbc.weightx = 1;
+		gbc.fill = GridBagConstraints.HORIZONTAL;
+		gbc.insets = new Insets(0, 0, 12, 0);
+		panel.add(title, gbc);
+
+		GridBagConstraints wrapper = new GridBagConstraints();
+		wrapper.gridx = 0;
+		wrapper.gridy = GridBagConstraints.RELATIVE;
+		wrapper.weightx = 1;
+		wrapper.fill = GridBagConstraints.HORIZONTAL;
+		wrapper.insets = new Insets(0, 0, 14, 0);
+		panel.putClientProperty("wrapperConstraints", wrapper);
 		return panel;
 	}
 
 	private void addRow(JPanel panel, int row, String label, JTextField field, JButton button) {
 		GridBagConstraints gbc = new GridBagConstraints();
-		gbc.insets = new Insets(6, 6, 6, 6);
-		gbc.gridy = row;
+		gbc.insets = new Insets(6, 4, 6, 4);
+		gbc.gridy = row + 1;
+
+		JLabel labelComp = new JLabel(label);
+		labelComp.setFont(BASE_FONT);
+		labelComp.setForeground(SUB_TEXT);
 
 		gbc.gridx = 0;
 		gbc.anchor = GridBagConstraints.EAST;
-		panel.add(new JLabel(label), gbc);
+		gbc.fill = GridBagConstraints.NONE;
+		panel.add(labelComp, gbc);
 
 		gbc.gridx = 1;
 		gbc.weightx = 1;
@@ -157,19 +277,69 @@ public class PosUI extends JFrame {
 		gbc.gridx = 2;
 		gbc.weightx = 0;
 		gbc.fill = GridBagConstraints.NONE;
-		panel.add(button == null ? new JLabel() : button, gbc);
+		panel.add(button == null ? spacerButtonSlot() : button, gbc);
+	}
+
+	private JTextField textField() {
+		return textField("");
+	}
+
+	private JTextField textField(String text) {
+		JTextField field = new JTextField(text, 20);
+		field.setForeground(TEXT);
+		field.setPreferredSize(new Dimension(260, 34));
+		field.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(209, 213, 219)),
+				new EmptyBorder(4, 8, 4, 8)));
+		return field;
+	}
+
+	private JButton primaryButton(String text) {
+		JButton button = new JButton(text);
+		button.setFont(BUTTON_FONT);
+		button.setForeground(Color.BLACK);
+		button.setBackground(PRIMARY);
+		button.setOpaque(true);
+		button.setContentAreaFilled(true);
+		button.setFocusPainted(false);
+		button.setPreferredSize(new Dimension(104, 38));
+		button.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(PRIMARY_DARK),
+				new EmptyBorder(8, 16, 8, 16)));
+		return button;
+	}
+
+	private JButton secondaryButton(String text) {
+		JButton button = new JButton(text);
+		button.setFont(BUTTON_FONT);
+		button.setForeground(new Color(17, 24, 39));
+		button.setBackground(Color.WHITE);
+		button.setOpaque(true);
+		button.setContentAreaFilled(true);
+		button.setFocusPainted(false);
+		button.setPreferredSize(new Dimension(112, 38));
+		button.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(209, 213, 219)),
+				new EmptyBorder(8, 14, 8, 14)));
+		return button;
+	}
+
+	private JLabel spacerButtonSlot() {
+		JLabel label = new JLabel();
+		label.setPreferredSize(new Dimension(84, 34));
+		return label;
 	}
 
 	private void searchCustomer() {
 		runSafe(() -> {
-			String phone = required(searchPhoneTf, "Phone");
+			String phone = required(searchPhoneTf, "전화번호");
 			Customer customer = service.searchCustomerByPhone(phone);
 			if (customer == null) {
-				log("No customer found. phone=" + phone);
+				log("회원을 찾지 못했습니다. 전화번호=" + phone);
 				return;
 			}
 			payCustIdTf.setText(String.valueOf(customer.getCustid()));
-			log("Customer: " + customer);
+			log("회원 조회 성공: " + customer);
 		});
 	}
 
@@ -177,47 +347,49 @@ public class PosUI extends JFrame {
 		runSafe(() -> {
 			Customer customer = new Customer(
 					0,
-					required(addNameTf, "Name"),
-					required(addAddressTf, "Address"),
-					required(addPhoneTf, "New phone"),
-					parseInt(addPointTf, "Point"));
+					required(addNameTf, "이름"),
+					required(addAddressTf, "주소"),
+					required(addPhoneTf, "전화번호"),
+					parseInt(addPointTf, "포인트"));
 			service.addCustomer(customer);
-			log("Customer added. phone=" + customer.getPhone());
+			log("회원 등록 완료: " + customer.getName() + " / " + customer.getPhone());
 			searchPhoneTf.setText(customer.getPhone());
 		});
 	}
 
 	private void updateStock() {
 		runSafe(() -> {
-			int bookId = parseInt(stockBookIdTf, "입고 굿즈 아이디");
-			int amount = parseInt(stockAmountTf, "Stock amount");
-			service.updateProductStock(bookId, amount);
-			log("Stock updated. goodsId=" + bookId + ", amount=" + amount);
+			int goodsId = parseInt(stockGoodsIdTf, "상품 아이디");
+			int amount = parseInt(stockAmountTf, "입고 수량");
+			service.updateProductStock(goodsId, amount);
+			log("재고 추가 완료: 상품 아이디=" + goodsId + ", 수량=" + amount);
 		});
 	}
 
 	private void checkExpiry() {
 		runSafe(() -> {
-			int bookId = parseInt(expiryBookIdTf, "유통기한 굿즈 아이디");
-			boolean available = service.checkExpiry(bookId);
-			log("Goods " + bookId + (available ? " is available." : " is expired or not found."));
+			int goodsId = parseInt(expiryGoodsIdTf, "상품 아이디");
+			boolean available = service.checkExpiry(goodsId);
+			log(available
+					? "판매 가능: 상품 아이디=" + goodsId
+					: "판매 불가 또는 조회 실패: 상품 아이디=" + goodsId);
 		});
 	}
 
 	private void processPayment() {
 		runSafe(() -> {
-			int custId = parseInt(payCustIdTf, "Customer id");
-			int bookId = parseInt(payBookIdTf, "굿즈 아이디");
-			int quantity = parseInt(payQuantityTf, "Quantity");
-			int totalPrice = parseInt(payTotalPriceTf, "Total price");
-			boolean paid = service.processPayment(custId, bookId, quantity, totalPrice);
-			log(paid ? "Payment completed." : "Payment failed.");
+			int custId = parseInt(payCustIdTf, "회원 아이디");
+			int goodsId = parseInt(payGoodsIdTf, "상품 아이디");
+			int quantity = parseInt(payQuantityTf, "수량");
+			int totalPrice = parseInt(payTotalPriceTf, "총 금액");
+			boolean paid = service.processPayment(custId, goodsId, quantity, totalPrice);
+			log(paid ? "결제 완료" : "결제 실패: 회원, 상품, 재고를 확인하세요.");
 		});
 	}
 
 	private void runSafe(Runnable action) {
 		if (service == null) {
-			showError("Service is not connected.");
+			showError("서비스가 연결되지 않았습니다.");
 			return;
 		}
 		try {
@@ -230,7 +402,7 @@ public class PosUI extends JFrame {
 	private String required(JTextField field, String label) {
 		String value = field.getText().trim();
 		if (value.isEmpty()) {
-			throw new IllegalArgumentException(label + " is required.");
+			throw new IllegalArgumentException(label + "을 입력하세요.");
 		}
 		return value;
 	}
@@ -239,7 +411,7 @@ public class PosUI extends JFrame {
 		try {
 			return Integer.parseInt(required(field, label));
 		} catch (NumberFormatException e) {
-			throw new IllegalArgumentException(label + " must be a number.");
+			throw new IllegalArgumentException(label + "은 숫자로 입력하세요.");
 		}
 	}
 
@@ -249,8 +421,8 @@ public class PosUI extends JFrame {
 	}
 
 	private void showError(String message) {
-		String text = message == null || message.trim().isEmpty() ? "Unknown error." : message;
-		log("ERROR: " + text);
-		JOptionPane.showMessageDialog(this, text, "Error", JOptionPane.ERROR_MESSAGE);
+		String text = message == null || message.trim().isEmpty() ? "알 수 없는 오류가 발생했습니다." : message;
+		log("오류: " + text);
+		JOptionPane.showMessageDialog(this, text, "오류", JOptionPane.ERROR_MESSAGE);
 	}
 }
