@@ -111,9 +111,9 @@ public class PosUI extends JFrame {
 		JButton expiryBt = new JButton("Check expiry");
 		expiryBt.addActionListener(e -> checkExpiry());
 
-		addRow(panel, 0, "Stock book id", stockBookIdTf, null);
+		addRow(panel, 0, "입고 굿즈 아이디", stockBookIdTf, null);
 		addRow(panel, 1, "Stock amount", stockAmountTf, stockBt);
-		addRow(panel, 2, "Expiry book id", expiryBookIdTf, expiryBt);
+		addRow(panel, 2, "유통기한 굿즈 아이디", expiryBookIdTf, expiryBt);
 		return panel;
 	}
 
@@ -128,7 +128,7 @@ public class PosUI extends JFrame {
 		payBt.addActionListener(e -> processPayment());
 
 		addRow(panel, 0, "Customer id", payCustIdTf, null);
-		addRow(panel, 1, "Book id", payBookIdTf, null);
+		addRow(panel, 1, "굿즈 아이디", payBookIdTf, null);
 		addRow(panel, 2, "Quantity", payQuantityTf, null);
 		addRow(panel, 3, "Total price", payTotalPriceTf, payBt);
 		return panel;
@@ -189,25 +189,25 @@ public class PosUI extends JFrame {
 
 	private void updateStock() {
 		runSafe(() -> {
-			int bookId = parseInt(stockBookIdTf, "Stock book id");
+			int bookId = parseInt(stockBookIdTf, "입고 굿즈 아이디");
 			int amount = parseInt(stockAmountTf, "Stock amount");
 			service.updateProductStock(bookId, amount);
-			log("Stock updated. bookId=" + bookId + ", amount=" + amount);
+			log("Stock updated. goodsId=" + bookId + ", amount=" + amount);
 		});
 	}
 
 	private void checkExpiry() {
 		runSafe(() -> {
-			int bookId = parseInt(expiryBookIdTf, "Expiry book id");
+			int bookId = parseInt(expiryBookIdTf, "유통기한 굿즈 아이디");
 			boolean available = service.checkExpiry(bookId);
-			log("Book " + bookId + (available ? " is available." : " is expired or not found."));
+			log("Goods " + bookId + (available ? " is available." : " is expired or not found."));
 		});
 	}
 
 	private void processPayment() {
 		runSafe(() -> {
 			int custId = parseInt(payCustIdTf, "Customer id");
-			int bookId = parseInt(payBookIdTf, "Book id");
+			int bookId = parseInt(payBookIdTf, "굿즈 아이디");
 			int quantity = parseInt(payQuantityTf, "Quantity");
 			int totalPrice = parseInt(payTotalPriceTf, "Total price");
 			boolean paid = service.processPayment(custId, bookId, quantity, totalPrice);
