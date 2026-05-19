@@ -1,4 +1,4 @@
-package com.ureca.employee.model.dao;
+package com.ureca.pos.model.dao;
 
 public class CanNotSaveException extends RuntimeException {
 	public CanNotSaveException() {
