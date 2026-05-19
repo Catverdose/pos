@@ -58,8 +58,8 @@ public class PosDaoJang implements PosDao {
 			orderStmt = con.prepareStatement(orderSql);
 			orderStmt.setInt(1, custId);
 		    orderStmt.setInt(2, bookId);
-		    orderStmt.setInt(3, quantity);
-		    orderStmt.setInt(4, totalLinePrice);
+		    orderStmt.setInt(3, totalLinePrice); // 기존 코드의 quantity 위치를 saleprice로 교정
+			orderStmt.setInt(4, quantity);       // 기존 코드의 totalLinePrice 위치를 quantity로 교정
 		    
 		    int orderResult = orderStmt.executeUpdate();
 
@@ -174,6 +174,8 @@ public class PosDaoJang implements PosDao {
 			dbutil.close(stmt, con);
 		}
 	}
+	
+	
 
 	@Override
 	public void updateProductStock(int bookId, int amount) throws SQLException {
