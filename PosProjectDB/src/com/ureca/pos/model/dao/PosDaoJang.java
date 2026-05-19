@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
+import com.ureca.pos.model.dto.Customer;
 import com.ureca.pos.util.DBUtil;
 
 public class PosDaoJang implements PosDao {
@@ -20,7 +22,7 @@ public class PosDaoJang implements PosDao {
 			con = dbutil.getConnection();
 			// SQL 예시: select expire_date from pos_product where book_id = ?
 			// 💡 팁: 가져온 유통기한 날짜와 오늘 날짜를 비교해서 판매 가능하면 true, 지났으면 false 리턴!
-			 String sql = "SELECT expire_date FROM pos_product WHERE book_id = ?";
+			String sql = "SELECT expire_date FROM Book WHERE bookid = ?";
 		     stmt = con.prepareStatement(sql);
 		     stmt.setInt(1, bookId);
 		     rs = stmt.executeQuery();
@@ -52,7 +54,7 @@ public class PosDaoJang implements PosDao {
 			con.setAutoCommit(false); 
 			
 			// SQL 1: 영수증 추가 (insert into pos_orders...)
-			String orderSql = "INSERT INTO pos_orders(cust_id, book_id, quantity, total_price, order_date) VALUES (?, ?, ?, ?, NOW())";
+			String orderSql = "INSERT INTO Orders(custid, bookid, saleprice, quantity, orderdate) VALUES (?, ?, ?, ?, CURRENT_DATE)";			
 			orderStmt = con.prepareStatement(orderSql);
 			orderStmt.setInt(1, custId);
 		    orderStmt.setInt(2, bookId);
@@ -68,7 +70,7 @@ public class PosDaoJang implements PosDao {
 
 		    
 			// SQL 2: 재고 차감 (update pos_product set stock = stock - ? where book_id = ?...)
-		    String stockSql = "UPDATE pos_product SET stock = stock - ? WHERE book_id = ? AND stock >= ?";
+	        String stockSql = "UPDATE Book SET stock = stock - ? WHERE bookid = ? AND stock >= ?";
 	        stockStmt = con.prepareStatement(stockSql);
 	        stockStmt.setInt(1, quantity);
 	        stockStmt.setInt(2, bookId);
@@ -83,8 +85,7 @@ public class PosDaoJang implements PosDao {
 
 			// SQL 3: 포인트 적립 (update pos_customer set point = point + ? where cust_id = ?...)
 	        int savedPoint = totalLinePrice / 100;
-	        String pointSql = "UPDATE pos_customer SET point = point + ? WHERE cust_id = ?";
-	        pointStmt = con.prepareStatement(pointSql);
+	        String pointSql = "UPDATE Customer SET point = point + ? WHERE custid = ?";	        pointStmt = con.prepareStatement(pointSql);
 	        pointStmt.setInt(1, savedPoint);
 	        pointStmt.setInt(2, custId);
 
@@ -105,26 +106,11 @@ public class PosDaoJang implements PosDao {
 			if (con != null) con.rollback(); 
 			throw e;
 		} finally {
-			// 💡 다음 사람을 위해 AutoCommit을 다시 true로 돌려놓고 닫기
+			// 💡 [보완] 커넥션을 반환하기 전에 오토커밋을 true로 복구하여 다음 작업의 장애를 막습니다.
 			if (con != null) {
-	            con.setAutoCommit(true);
-	        }
-
-	        if (pointStmt != null) {
-	            pointStmt.close();
-	        }
-
-	        if (stockStmt != null) {
-	            stockStmt.close();
-	        }
-
-	        if (orderStmt != null) {
-	            orderStmt.close();
-	        }
-
-	        if (con != null) {
-	            con.close();
-	        }
+				try { con.setAutoCommit(true); } catch (Exception e) {}
+			}
+			dbutil.close(orderStmt, stockStmt, pointStmt, con);
 		}
 	}
 
@@ -132,15 +118,89 @@ public class PosDaoJang implements PosDao {
 	// 아래 메서드들은 파트너(송) 전용 기능이므로, 지원님 파일에서는 빈 껍데기로 유지합니다.
 	// =========================================================================
 	@Override
-	public com.ureca.pos.model.dto.Customer searchCustomerByPhone(String phone) throws SQLException {
+	public Customer searchCustomerByPhone(String phone) throws SQLException {
+		Connection con = null;
+		PreparedStatement stmt = null;
+		ResultSet rs = null;
+		try {
+	////////////////////////TODO 02. 핸드폰 번호로 회원 조회하기 (송 담당)
+			con = dbutil.getConnection();
+			// SQL 예시: select cust_id, name, phone, point from pos_customer where phone = ?
+			String sql = "SELECT custid, name, address, phone, point FROM Customer WHERE phone = ?";
+			stmt = con.prepareStatement(sql);
+			stmt.setString(1, phone);
+			rs = stmt.executeQuery();
+			if (rs.next()) {
+				int custId = rs.getInt("custid");
+	            String name = rs.getString("name");
+	            String customerPhone = rs.getString("phone");
+	            String address = rs.getString("address");
+	            int point = rs.getInt("point");
+
+	            return new Customer(custId, name, address, customerPhone, point);
+	        }
+			
+		} finally {
+			dbutil.close(rs, stmt, con);
+		}
 		return null;
 	}
 
 	@Override
-	public void addCustomer(com.ureca.pos.model.dto.Customer cust) throws SQLException {
+	public void addCustomer(Customer cust) throws SQLException {
+		Connection con = null;
+		PreparedStatement stmt = null;
+		try {
+	////////////////////////TODO 03. 신규 포인트 회원 즉석 등록하기 (송 담당)
+			con = dbutil.getConnection();
+			// SQL 예시: insert into pos_customer(name, phone, point) values(?,?,?)
+			String sql = "INSERT INTO Customer(name, address, phone, point) VALUES (?, ?, ?, ?)"; // 테이블명, 컬럼수 수정		        
+			stmt = con.prepareStatement(sql);
+
+		        stmt.setString(1, cust.getName());
+		        stmt.setString(2, cust.getAddress()); // 주소 세팅 추가
+		        stmt.setString(3, cust.getPhone());
+		        stmt.setInt(4, cust.getPoint());
+		        int result = stmt.executeUpdate();
+		        
+		        if (result == 0) {
+		            throw new CanNotSaveException();
+		        }
+		} catch (SQLException e) {
+	        throw new CanNotSaveException();
+
+			
+		} finally {
+			dbutil.close(stmt, con);
+		}
 	}
 
 	@Override
 	public void updateProductStock(int bookId, int amount) throws SQLException {
+		Connection con = null;
+		PreparedStatement stmt = null;
+		try {
+	////////////////////////TODO 04. 물류 입고 - 상품 재고 더하기 (송 담당)
+			con = dbutil.getConnection();
+			// SQL 예시: update pos_product set stock = stock + ? where book_id = ?
+			String sql = "UPDATE Book SET stock = stock + ? WHERE bookid = ?"; // 테이블명, 컬럼명 매칭
+	        stmt = con.prepareStatement(sql);
+
+	        stmt.setInt(1, amount);
+	        stmt.setInt(2, bookId);
+
+	        int result = stmt.executeUpdate();
+
+	        if (result == 0) {
+	            throw new CanNotSaveException();
+	        }
+		 } catch (SQLException e) {
+		        throw new CanNotSaveException();
+
+			
+		} finally {
+			dbutil.close(stmt, con);
+		}
 	}
+
 }
