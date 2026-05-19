@@ -22,17 +22,18 @@ public class PosDaoSong implements PosDao {
 	////////////////////////TODO 02. 핸드폰 번호로 회원 조회하기 (송 담당)
 			con = dbutil.getConnection();
 			// SQL 예시: select cust_id, name, phone, point from pos_customer where phone = ?
-			String sql = "SELECT * FROM customer WHERE phone = ?";
+			String sql = "SELECT custid, name, address, phone, point FROM Customer WHERE phone = ?";
 			stmt = con.prepareStatement(sql);
 			stmt.setString(1, phone);
 			rs = stmt.executeQuery();
 			if (rs.next()) {
-	            int custId = rs.getInt("cust_id");
+				int custId = rs.getInt("custid");
 	            String name = rs.getString("name");
 	            String customerPhone = rs.getString("phone");
+	            String address = rs.getString("address");
 	            int point = rs.getInt("point");
 
-	            return new Customer(cust_id, name, phone, point);
+	            return new Customer(custId, name, address, customerPhone, point);
 	        }
 			
 		} finally {
@@ -49,13 +50,13 @@ public class PosDaoSong implements PosDao {
 	////////////////////////TODO 03. 신규 포인트 회원 즉석 등록하기 (송 담당)
 			con = dbutil.getConnection();
 			// SQL 예시: insert into pos_customer(name, phone, point) values(?,?,?)
-			 String sql = "INSERT INTO pos_customer(name, phone, point) VALUES (?, ?, ?)";
-		        stmt = con.prepareStatement(sql);
+			String sql = "INSERT INTO Customer(name, address, phone, point) VALUES (?, ?, ?, ?)"; // 테이블명, 컬럼수 수정		        
+			stmt = con.prepareStatement(sql);
 
 		        stmt.setString(1, cust.getName());
-		        stmt.setString(2, cust.getPhone());
-		        stmt.setInt(3, cust.getPoint());
-
+		        stmt.setString(2, cust.getAddress()); // 주소 세팅 추가
+		        stmt.setString(3, cust.getPhone());
+		        stmt.setInt(4, cust.getPoint());
 		        int result = stmt.executeUpdate();
 		        
 		        if (result == 0) {
@@ -78,7 +79,7 @@ public class PosDaoSong implements PosDao {
 	////////////////////////TODO 04. 물류 입고 - 상품 재고 더하기 (송 담당)
 			con = dbutil.getConnection();
 			// SQL 예시: update pos_product set stock = stock + ? where book_id = ?
-			String sql = "UPDATE pos_product SET stock = stock + ? WHERE book_id = ?";
+			String sql = "UPDATE Book SET stock = stock + ? WHERE bookid = ?"; // 테이블명, 컬럼명 매칭
 	        stmt = con.prepareStatement(sql);
 
 	        stmt.setInt(1, amount);
