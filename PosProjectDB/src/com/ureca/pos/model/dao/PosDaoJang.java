@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
+import com.ureca.pos.model.dto.Customer;
 import com.ureca.pos.util.DBUtil;
 
 public class PosDaoJang implements PosDao {
@@ -116,15 +118,89 @@ public class PosDaoJang implements PosDao {
 	// 아래 메서드들은 파트너(송) 전용 기능이므로, 지원님 파일에서는 빈 껍데기로 유지합니다.
 	// =========================================================================
 	@Override
-	public com.ureca.pos.model.dto.Customer searchCustomerByPhone(String phone) throws SQLException {
+	public Customer searchCustomerByPhone(String phone) throws SQLException {
+		Connection con = null;
+		PreparedStatement stmt = null;
+		ResultSet rs = null;
+		try {
+	////////////////////////TODO 02. 핸드폰 번호로 회원 조회하기 (송 담당)
+			con = dbutil.getConnection();
+			// SQL 예시: select cust_id, name, phone, point from pos_customer where phone = ?
+			String sql = "SELECT custid, name, address, phone, point FROM Customer WHERE phone = ?";
+			stmt = con.prepareStatement(sql);
+			stmt.setString(1, phone);
+			rs = stmt.executeQuery();
+			if (rs.next()) {
+				int custId = rs.getInt("custid");
+	            String name = rs.getString("name");
+	            String customerPhone = rs.getString("phone");
+	            String address = rs.getString("address");
+	            int point = rs.getInt("point");
+
+	            return new Customer(custId, name, address, customerPhone, point);
+	        }
+			
+		} finally {
+			dbutil.close(rs, stmt, con);
+		}
 		return null;
 	}
 
 	@Override
-	public void addCustomer(com.ureca.pos.model.dto.Customer cust) throws SQLException {
+	public void addCustomer(Customer cust) throws SQLException {
+		Connection con = null;
+		PreparedStatement stmt = null;
+		try {
+	////////////////////////TODO 03. 신규 포인트 회원 즉석 등록하기 (송 담당)
+			con = dbutil.getConnection();
+			// SQL 예시: insert into pos_customer(name, phone, point) values(?,?,?)
+			String sql = "INSERT INTO Customer(name, address, phone, point) VALUES (?, ?, ?, ?)"; // 테이블명, 컬럼수 수정		        
+			stmt = con.prepareStatement(sql);
+
+		        stmt.setString(1, cust.getName());
+		        stmt.setString(2, cust.getAddress()); // 주소 세팅 추가
+		        stmt.setString(3, cust.getPhone());
+		        stmt.setInt(4, cust.getPoint());
+		        int result = stmt.executeUpdate();
+		        
+		        if (result == 0) {
+		            throw new CanNotSaveException();
+		        }
+		} catch (SQLException e) {
+	        throw new CanNotSaveException();
+
+			
+		} finally {
+			dbutil.close(stmt, con);
+		}
 	}
 
 	@Override
 	public void updateProductStock(int bookId, int amount) throws SQLException {
+		Connection con = null;
+		PreparedStatement stmt = null;
+		try {
+	////////////////////////TODO 04. 물류 입고 - 상품 재고 더하기 (송 담당)
+			con = dbutil.getConnection();
+			// SQL 예시: update pos_product set stock = stock + ? where book_id = ?
+			String sql = "UPDATE Book SET stock = stock + ? WHERE bookid = ?"; // 테이블명, 컬럼명 매칭
+	        stmt = con.prepareStatement(sql);
+
+	        stmt.setInt(1, amount);
+	        stmt.setInt(2, bookId);
+
+	        int result = stmt.executeUpdate();
+
+	        if (result == 0) {
+	            throw new CanNotSaveException();
+	        }
+		 } catch (SQLException e) {
+		        throw new CanNotSaveException();
+
+			
+		} finally {
+			dbutil.close(stmt, con);
+		}
 	}
+
 }

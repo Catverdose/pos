@@ -1,4 +1,5 @@
 package com.ureca.pos.util;
+import com.ureca.pos.model.dao.PosDaoJang;
 
 import com.ureca.pos.model.dao.PosDao;
 
