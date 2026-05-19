@@ -1,4 +1,4 @@
-package com.ureca.employee.model.dto;
+package com.ureca.pos.model.dto;
 
 public class CanNotFindException extends RuntimeException {
 	public CanNotFindException() {}

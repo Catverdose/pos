@@ -1,21 +1,21 @@
-package com.ureca.employee.model.dto;
+package com.ureca.pos.model.dto;
 
 import java.io.Serializable;
 import java.util.Objects;
 
-public class Employee implements Cloneable, Comparable<Employee>, Serializable{
+public class Customer implements Cloneable, Comparable<Customer>, Serializable{
 	private String empno;
 	private String name;
 	private int salary;
-	public Employee() {}
-	public Employee(String empno, String name, int salary) {
+	public Customer() {}
+	public Customer(String empno, String name, int salary) {
 		this.empno = empno;
 		this.name = name;
 		this.salary = salary;
 	}
 	
 	@Override
-	public int compareTo(Employee o) {
+	public int compareTo(Customer o) {
 //		return o.getEmpno().compareTo(empno);		//내림 차순
 		return empno.compareTo(o.empno);  //오름 차순
 	}
@@ -56,8 +56,8 @@ public class Employee implements Cloneable, Comparable<Employee>, Serializable{
 	
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof Employee) {  // instanceof가  null 검사도 한다. 
-			Employee emp = (Employee) obj;
+		if (obj instanceof Customer) {  // instanceof가  null 검사도 한다. 
+			Customer emp = (Customer) obj;
 			if (Objects.equals(empno, emp.empno)) {
 				return true;
 			}
