@@ -20,7 +20,7 @@ public class PosDaoJang implements PosDao {
 			con = dbutil.getConnection();
 			// SQL 예시: select expire_date from pos_product where book_id = ?
 			// 💡 팁: 가져온 유통기한 날짜와 오늘 날짜를 비교해서 판매 가능하면 true, 지났으면 false 리턴!
-			 String sql = "SELECT expire_date FROM pos_product WHERE book_id = ?";
+			String sql = "SELECT expire_date FROM Book WHERE bookid = ?";
 		     stmt = con.prepareStatement(sql);
 		     stmt.setInt(1, bookId);
 		     rs = stmt.executeQuery();
@@ -52,7 +52,7 @@ public class PosDaoJang implements PosDao {
 			con.setAutoCommit(false); 
 			
 			// SQL 1: 영수증 추가 (insert into pos_orders...)
-			String orderSql = "INSERT INTO pos_orders(cust_id, book_id, quantity, total_price, order_date) VALUES (?, ?, ?, ?, NOW())";
+			String orderSql = "INSERT INTO Orders(custid, bookid, saleprice, quantity, orderdate) VALUES (?, ?, ?, ?, CURRENT_DATE)";			
 			orderStmt = con.prepareStatement(orderSql);
 			orderStmt.setInt(1, custId);
 		    orderStmt.setInt(2, bookId);
@@ -68,7 +68,7 @@ public class PosDaoJang implements PosDao {
 
 		    
 			// SQL 2: 재고 차감 (update pos_product set stock = stock - ? where book_id = ?...)
-		    String stockSql = "UPDATE pos_product SET stock = stock - ? WHERE book_id = ? AND stock >= ?";
+	        String stockSql = "UPDATE Book SET stock = stock - ? WHERE bookid = ? AND stock >= ?";
 	        stockStmt = con.prepareStatement(stockSql);
 	        stockStmt.setInt(1, quantity);
 	        stockStmt.setInt(2, bookId);
@@ -83,8 +83,7 @@ public class PosDaoJang implements PosDao {
 
 			// SQL 3: 포인트 적립 (update pos_customer set point = point + ? where cust_id = ?...)
 	        int savedPoint = totalLinePrice / 100;
-	        String pointSql = "UPDATE pos_customer SET point = point + ? WHERE cust_id = ?";
-	        pointStmt = con.prepareStatement(pointSql);
+	        String pointSql = "UPDATE Customer SET point = point + ? WHERE custid = ?";	        pointStmt = con.prepareStatement(pointSql);
 	        pointStmt.setInt(1, savedPoint);
 	        pointStmt.setInt(2, custId);
 
@@ -105,26 +104,11 @@ public class PosDaoJang implements PosDao {
 			if (con != null) con.rollback(); 
 			throw e;
 		} finally {
-			// 💡 다음 사람을 위해 AutoCommit을 다시 true로 돌려놓고 닫기
+			// 💡 [보완] 커넥션을 반환하기 전에 오토커밋을 true로 복구하여 다음 작업의 장애를 막습니다.
 			if (con != null) {
-	            con.setAutoCommit(true);
-	        }
-
-	        if (pointStmt != null) {
-	            pointStmt.close();
-	        }
-
-	        if (stockStmt != null) {
-	            stockStmt.close();
-	        }
-
-	        if (orderStmt != null) {
-	            orderStmt.close();
-	        }
-
-	        if (con != null) {
-	            con.close();
-	        }
+				try { con.setAutoCommit(true); } catch (Exception e) {}
+			}
+			dbutil.close(orderStmt, stockStmt, pointStmt, con);
 		}
 	}
 
