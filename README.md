@@ -24,13 +24,13 @@ com.ureca.pos
 │   ├── dto                     # 데이터 모델 (Book, Customer, Orders)
 │   ├── dao
 │   │   ├── PosDao.java         # 추상화 인터페이스 명세 (공통 계약서)
-│   │   ├── PosDaoJang.java     # [장지원] 결제 트랜잭션 및 유통기한 검증 구현체
-│   │   └── PosDaoSong.java     # [파트너] 회원 관리 및 물류 재고 보충 구현체
+│   │   ├── PosDaoJang.java     # 결제 트랜잭션 및 유통기한 검증 구현체
+│   │   └── PosDaoSong.java     # 회원 관리 및 물류 재고 보충 구현체
 │   └── service
 │       ├── PosService.java     # 비즈니스 로직 인터페이스
 │       └── PosServiceImp.java  # 두 개의 DAO를 조립/제어하는 서비스 타워
 └── view
-    ├── PosMainFrame.java       # Swing GUI 메인 프레임 화면 (파트너 담당)
+    ├── PosMainFrame.java       # Swing GUI 메인 프레임 화면 
     └── Main.java               # 애플리케이션 실행 진입부
 
 ```
