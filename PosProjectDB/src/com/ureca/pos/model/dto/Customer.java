@@ -4,22 +4,26 @@ import java.io.Serializable;
 import java.util.Objects;
 
 public class Customer implements Cloneable, Comparable<Customer>, Serializable{
-	private String empno;
+	private int custid;
 	private String name;
-	private int salary;
+	private String address;
+	private String phone;
+	private int point;
+	
 	public Customer() {}
-	public Customer(String empno, String name, int salary) {
-		this.empno = empno;
+	public Customer(int custid, String name, String address, String phone, int point) {
+		this.custid = custid;
 		this.name = name;
-		this.salary = salary;
+		this.address = address;
+		this.phone = phone;
+		this.point = point;
 	}
 	
 	@Override
 	public int compareTo(Customer o) {
 //		return o.getEmpno().compareTo(empno);		//내림 차순
-		return empno.compareTo(o.empno);  //오름 차순
+		return Integer.compare(this.custid, o.custid); // 회원번호 오름차순 정렬	
 	}
-	
 	
 	/**
 	 * clone() 
@@ -36,12 +40,19 @@ public class Customer implements Cloneable, Comparable<Customer>, Serializable{
 	 * equals(Object o)
 	 * - 객체의 내용을 비교하는 함수 
 	 * - 반드시 Override 해야 객체 내용을 비교할 수 있다.  
+	 * * - 편의점 실무에서는 중복 가입을 막기 위해 '전화번호(phone)'가 같으면 같은 회원으로 판정합니다.
 	 */
-	public String getEmpno() {
-		return empno;
+	public boolean booleanEquals(Object obj) {
+		
+		if (obj instanceof Customer) {  // instanceof가 null 검사도 한다. 
+			Customer other = (Customer) obj;
+			if (Objects.equals(phone, other.phone)) {
+				return true;
+			}
+		}
+		return false;
 	}
-	
-	
+
 	
 	/**
 	 * hashCode 
@@ -57,15 +68,16 @@ public class Customer implements Cloneable, Comparable<Customer>, Serializable{
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof Customer) {  // instanceof가  null 검사도 한다. 
-			Customer emp = (Customer) obj;
-			if (Objects.equals(empno, emp.empno)) {
-				return true;
-			}
+			Customer other = (Customer) obj;
+			return Objects.equals(phone, other.phone);
 		}
 		return false;
 	}
-	public void setEmpno(String empno) {
-		this.empno = empno;
+	public int getCustid() {
+		return custid;
+	}
+	public void setCustid(int custid) {
+		this.custid = custid;
 	}
 	public String getName() {
 		return name;
@@ -73,20 +85,30 @@ public class Customer implements Cloneable, Comparable<Customer>, Serializable{
 	public void setName(String name) {
 		this.name = name;
 	}
-	public int getSalary() {
-		return salary;
+	public String getAddress() {
+		return address;
 	}
-	public void setSalary(int salary) {
-		this.salary = salary;
+	public void setAddress(String address) {
+		this.address = address;
 	}
-	
+	public String getPhone() {
+		return phone;
+	}
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+	public int getPoint() {
+		return point;
+	}
+	public void setPoint(int point) {
+		this.point = point;
+	}
 	/**
 	 * finalize()
 	 *  - 객체가 가비지 컬렉터에 의해 메모리에서 해제될 때 호출되는 함수 
 	 */
 	protected void finalize() throws Throwable {
-		System.out.println(this.hashCode()+" finalize........");
-	}
+		System.out.println(this.hashCode() + " Customer 객체 수거 완료(finalize)...");	}
 	
 	/**
 	 * toString()
@@ -94,10 +116,11 @@ public class Customer implements Cloneable, Comparable<Customer>, Serializable{
 	 * - System.out으로 객체를 출력시  toString()를 호출해서 출력한다. 
 	 * - 객체를 String 객체에 + 연산을 하면 toString()를 호출해서 문자열을 연결한다. 
 	 */
+	@Override
 	public String toString() {
-		return "empno=" + empno + ", name=" + name + ", salary=" + salary;
+		return "Customer [custid=" + custid + ", name=" + name + ", address=" + address + ", phone=" + phone
+				+ ", point=" + point + "]";
 	}
-	
 	void notVirtualInvoke() {
 		System.out.println("Employee의 notVirtualInvoke()");
 	}
