@@ -40,7 +40,6 @@ public class Customer implements Cloneable, Comparable<Customer>, Serializable{
 	 * equals(Object o)
 	 * - 객체의 내용을 비교하는 함수 
 	 * - 반드시 Override 해야 객체 내용을 비교할 수 있다.  
-	 * * - 편의점 실무에서는 중복 가입을 막기 위해 '전화번호(phone)'가 같으면 같은 회원으로 판정합니다.
 	 */
 	public boolean booleanEquals(Object obj) {
 		
@@ -67,7 +66,7 @@ public class Customer implements Cloneable, Comparable<Customer>, Serializable{
 	
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof Customer) {  // instanceof가  null 검사도 한다. 
+		if (obj instanceof Customer) {  
 			Customer other = (Customer) obj;
 			return Objects.equals(phone, other.phone);
 		}

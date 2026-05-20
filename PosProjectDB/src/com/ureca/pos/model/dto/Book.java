@@ -9,7 +9,7 @@ public class Book implements Cloneable, Comparable<Book>, Serializable {
 	private String publisher;    // 제조사
 	private int price;           // 상품 단가
 	private int stock;           // 실시간 매대 잔여 재고량
-	private String expireDate;   // 💡 변수명과 toString() 명칭을 expireDate로 깔끔하게 통일했습니다!
+	private String expireDate;   // 유통기한
 
 	public Book() {}
 	
@@ -43,21 +43,18 @@ public class Book implements Cloneable, Comparable<Book>, Serializable {
 	/**
 	 * equals(Object obj)
 	 * - 객체의 내용을 비교하는 함수 
-	 * - 편의점 상품 바코드(bookid)가 일치하면 동일 상품으로 판정합니다.
-	 * 💡 (가짜 중복 메서드인 booleanEquals는 깔끔하게 삭제하고 표준 equals로 일원화했습니다.)
+	 * - 편의점 상품 바코드(bookid)가 일치하면 동일 상품으로 판정
 	 */
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof Book) {  // instanceof가 null 검사도 한다. 
+		if (obj instanceof Book) {  
 			Book other = (Book) obj;
 			return Objects.equals(bookid, other.bookid);
 		}
 		return false;
 	}
 	
-	// =========================================================================
 	// Getters and Setters
-	// =========================================================================
 	public int getBookid() {
 		return bookid;
 	}

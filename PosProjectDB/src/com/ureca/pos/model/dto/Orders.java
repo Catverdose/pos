@@ -47,16 +47,14 @@ public class Orders implements Cloneable, Comparable<Orders>, Serializable {
 	 */
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof Orders) { // instanceof가 null 검사도 한다. 
+		if (obj instanceof Orders) { 
 			Orders other = (Orders) obj;
 			return Objects.equals(orderid, other.orderid);
 		}
 		return false;
 	}
 
-	// =========================================================================
 	// Getters and Setters
-	// =========================================================================
 	public int getOrderid() {
 		return orderid;
 	}
