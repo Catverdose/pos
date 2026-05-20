@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -18,12 +19,15 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
 
+import com.ureca.pos.model.dto.Book;
 import com.ureca.pos.model.dto.Customer;
 import com.ureca.pos.model.service.PosService;
 
@@ -57,19 +61,25 @@ public class PosUI extends JFrame {
 	private JTextField payTotalPriceTf;
 
 	private JTextArea logTa;
+	
+	// 🌟 실시간 대시보드 표를 관리하기 위한 Swing 컴포넌트 추가
+	private JTable productTable;
+	private DefaultTableModel tableModel;
 
 	public PosUI() {
 		super("상품 POS");
 		setupLookAndFeel();
 		buildView();
-		setSize(820, 620);
-		setMinimumSize(new Dimension(720, 540));
+		setSize(850, 680); // 💡 테이블 가독성을 위해 창 크기를 살짝 넓혔습니다.
+		setMinimumSize(new Dimension(750, 580));
 		setLocationRelativeTo(null);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 
 	public void setModel(PosService service) {
 		this.service = service;
+		// 서비스 모델이 주입되는 시점에 표 데이터를 최초 1회 로드합니다.
+		refreshProductTable();
 	}
 
 	public void open() {
@@ -84,6 +94,8 @@ public class PosUI extends JFrame {
 			UIManager.put("TextField.font", BASE_FONT);
 			UIManager.put("TextArea.font", BASE_FONT);
 			UIManager.put("TabbedPane.font", BASE_FONT);
+			UIManager.put("Table.font", BASE_FONT);
+			UIManager.put("TableHeader.font", BASE_FONT);
 		} catch (Exception e) {
 			// Keep Swing's default look and feel if the system one is unavailable.
 		}
@@ -99,11 +111,11 @@ public class PosUI extends JFrame {
 		JTabbedPane tabs = new JTabbedPane();
 		tabs.setBackground(BG);
 		tabs.addTab("회원", customerPanel());
-		tabs.addTab("상품", productPanel());
+		tabs.addTab("상품 관리", productPanel()); // 명칭 직관화
 		tabs.addTab("결제", paymentPanel());
 		root.add(tabs, BorderLayout.CENTER);
 
-		logTa = new JTextArea(7, 20);
+		logTa = new JTextArea(6, 20);
 		logTa.setEditable(false);
 		logTa.setLineWrap(true);
 		logTa.setWrapStyleWord(true);
@@ -122,7 +134,7 @@ public class PosUI extends JFrame {
 		JPanel panel = new JPanel(new BorderLayout());
 		panel.setOpaque(false);
 
-		JLabel title = new JLabel("상품 POS 관리");
+		JLabel title = new JLabel("상품 POS 관리 System");
 		title.setFont(TITLE_FONT);
 		title.setForeground(TEXT);
 
@@ -172,7 +184,7 @@ public class PosUI extends JFrame {
 	private JPanel productPanel() {
 		JPanel panel = tabPanel();
 
-		JPanel stock = sectionPanel("상품 입고");
+		JPanel stock = sectionPanel("상품 입고 및 조회");
 		stockGoodsIdTf = textField();
 		stockAmountTf = textField();
 		JButton stockBt = primaryButton("재고 추가");
@@ -186,8 +198,29 @@ public class PosUI extends JFrame {
 		expiryBt.addActionListener(e -> checkExpiry());
 		addRow(expiry, 0, "상품 아이디", expiryGoodsIdTf, expiryBt);
 
+		// 🌟 [핵심 보완] 실시간 전체 상품 재고 현황판 렌더링 영역 추가
+		JPanel tablePanel = new JPanel(new BorderLayout());
+		tablePanel.setBackground(PANEL_BG);
+		tablePanel.setBorder(BorderFactory.createTitledBorder("실시간 매대 상품 재고 현황"));
+		
+		String[] columns = {"상품 ID", "상품명(도서명)", "출판사(제조사)", "단가", "잔여 재고", "유통기한"};
+		tableModel = new DefaultTableModel(columns, 0) {
+			@Override
+			public boolean isCellEditable(int row, int column) {
+				return false; // 더블클릭해도 표 내용이 직접 수정되지 않도록 잠금
+			}
+		};
+		productTable = new JTable(tableModel);
+		productTable.setRowHeight(22);
+		JScrollPane scrollPane = new JScrollPane(productTable);
+		scrollPane.setPreferredSize(new Dimension(500, 160));
+		tablePanel.add(scrollPane, BorderLayout.CENTER);
+
 		addSection(panel, stock);
 		addSection(panel, expiry);
+		
+		tablePanel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.add(tablePanel); // 전체 상품 레이아웃에 현황 표 투입
 		return panel;
 	}
 
@@ -230,7 +263,7 @@ public class PosUI extends JFrame {
 		panel.setBackground(PANEL_BG);
 		panel.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createLineBorder(new Color(229, 231, 235)),
-				new EmptyBorder(18, 18, 18, 18)));
+				new EmptyBorder(14, 18, 14, 18)));
 
 		JLabel title = new JLabel(titleText);
 		title.setFont(SECTION_FONT);
@@ -242,7 +275,7 @@ public class PosUI extends JFrame {
 		gbc.gridwidth = 3;
 		gbc.weightx = 1;
 		gbc.fill = GridBagConstraints.HORIZONTAL;
-		gbc.insets = new Insets(0, 0, 12, 0);
+		gbc.insets = new Insets(0, 0, 10, 0);
 		panel.add(title, gbc);
 
 		GridBagConstraints wrapper = new GridBagConstraints();
@@ -250,14 +283,14 @@ public class PosUI extends JFrame {
 		wrapper.gridy = GridBagConstraints.RELATIVE;
 		wrapper.weightx = 1;
 		wrapper.fill = GridBagConstraints.HORIZONTAL;
-		wrapper.insets = new Insets(0, 0, 14, 0);
+		wrapper.insets = new Insets(0, 0, 12, 0);
 		panel.putClientProperty("wrapperConstraints", wrapper);
 		return panel;
 	}
 
 	private void addRow(JPanel panel, int row, String label, JTextField field, JButton button) {
 		GridBagConstraints gbc = new GridBagConstraints();
-		gbc.insets = new Insets(6, 4, 6, 4);
+		gbc.insets = new Insets(4, 4, 4, 4);
 		gbc.gridy = row + 1;
 
 		JLabel labelComp = new JLabel(label);
@@ -287,7 +320,7 @@ public class PosUI extends JFrame {
 	private JTextField textField(String text) {
 		JTextField field = new JTextField(text, 20);
 		field.setForeground(TEXT);
-		field.setPreferredSize(new Dimension(260, 34));
+		field.setPreferredSize(new Dimension(260, 32));
 		field.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createLineBorder(new Color(209, 213, 219)),
 				new EmptyBorder(4, 8, 4, 8)));
@@ -302,10 +335,10 @@ public class PosUI extends JFrame {
 		button.setOpaque(true);
 		button.setContentAreaFilled(true);
 		button.setFocusPainted(false);
-		button.setPreferredSize(new Dimension(104, 38));
+		button.setPreferredSize(new Dimension(104, 34));
 		button.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createLineBorder(PRIMARY_DARK),
-				new EmptyBorder(8, 16, 8, 16)));
+				new EmptyBorder(6, 12, 6, 12)));
 		return button;
 	}
 
@@ -317,17 +350,38 @@ public class PosUI extends JFrame {
 		button.setOpaque(true);
 		button.setContentAreaFilled(true);
 		button.setFocusPainted(false);
-		button.setPreferredSize(new Dimension(112, 38));
+		button.setPreferredSize(new Dimension(112, 34));
 		button.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createLineBorder(new Color(209, 213, 219)),
-				new EmptyBorder(8, 14, 8, 14)));
+				new EmptyBorder(6, 12, 6, 12)));
 		return button;
 	}
 
 	private JLabel spacerButtonSlot() {
 		JLabel label = new JLabel();
-		label.setPreferredSize(new Dimension(84, 34));
+		label.setPreferredSize(new Dimension(84, 32));
 		return label;
+	}
+
+	// 🌟 [추가 기능] 백엔드 데이터베이스 최신 상품 정보를 가져와 표를 갱신하는 실시간 동기화 스크립트
+	private void refreshProductTable() {
+		if (service == null || tableModel == null) return;
+		try {
+			tableModel.setRowCount(0); // 기존 테이블 열 목록 클리어
+			List<Book> books = service.getAllProducts();
+			for (Book b : books) {
+				tableModel.addRow(new Object[]{
+					b.getBookid(),
+					b.getBookname(),  // Book DTO의 정의된 변수명에 맞게 매핑
+					b.getPublisher(),
+					b.getPrice(),
+					b.getStock(),
+					b.getExpireDate()
+				});
+			}
+		} catch (Exception e) {
+			log("대시보드 표 갱신 실패: " + e.getMessage());
+		}
 	}
 
 	private void searchCustomer() {
@@ -363,6 +417,8 @@ public class PosUI extends JFrame {
 			int amount = parseInt(stockAmountTf, "입고 수량");
 			service.updateProductStock(goodsId, amount);
 			log("재고 추가 완료: 상품 아이디=" + goodsId + ", 수량=" + amount);
+			
+			refreshProductTable(); // 🌟 데이터 변동이 생겼으므로 표 동기화 강제 새로고침!
 		});
 	}
 
@@ -383,7 +439,13 @@ public class PosUI extends JFrame {
 			int quantity = parseInt(payQuantityTf, "수량");
 			int totalPrice = parseInt(payTotalPriceTf, "총 금액");
 			boolean paid = service.processPayment(custId, goodsId, quantity, totalPrice);
-			log(paid ? "결제 완료" : "결제 실패: 회원, 상품, 재고를 확인하세요.");
+			
+			if (paid) {
+				log("결제 완료");
+				refreshProductTable(); // 🌟 결제로 재고가 차감되었으므로 표 실시간 자동 갱신!
+			} else {
+				log("결제 실패: 회원, 상품, 재고를 확인하세요.");
+			}
 		});
 	}
 

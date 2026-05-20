@@ -4,7 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
+import com.ureca.pos.model.dto.Book;
 import com.ureca.pos.model.dto.Customer;
 import com.ureca.pos.util.DBUtil;
 
@@ -145,6 +148,8 @@ public class PosDaoJang implements PosDao {
 		}
 		return null;
 	}
+	
+	
 
 	@Override
 	public void addCustomer(Customer cust) throws SQLException {
@@ -175,7 +180,40 @@ public class PosDaoJang implements PosDao {
 		}
 	}
 	
-	
+	@Override
+	public List<Book> getAllProducts() throws SQLException {
+		Connection con = null;
+		PreparedStatement stmt = null;
+		ResultSet rs = null;
+		List<Book> list = new ArrayList<>();
+		try {
+			con = dbutil.getConnection();
+			
+			// 💡 1. 쿼리문에서 title 대신 실제 컬럼명인 bookname으로 수정!
+			String sql = "SELECT bookid, bookname, publisher, price, stock, expire_date FROM Book ORDER BY bookid ASC";
+			stmt = con.prepareStatement(sql);
+			rs = stmt.executeQuery();
+			
+			while (rs.next()) {
+				Book book = new Book();
+				book.setBookid(rs.getInt("bookid"));
+				
+				// 💡 2. DB에서 꺼내올 때도 bookname 컬럼 명칭으로 정확하게 매핑!
+				book.setBookname(rs.getString("bookname"));      
+				book.setPublisher(rs.getString("publisher"));
+				book.setPrice(rs.getInt("price"));
+				book.setStock(rs.getInt("stock"));
+				
+				java.sql.Date date = rs.getDate("expire_date");
+				book.setExpireDate(date != null ? date.toString() : "");
+				
+				list.add(book);
+			}
+		} finally {
+			dbutil.close(rs, stmt, con);
+		}
+		return list;
+	}
 
 	@Override
 	public void updateProductStock(int bookId, int amount) throws SQLException {
