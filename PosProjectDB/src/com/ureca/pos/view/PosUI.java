@@ -42,6 +42,8 @@ public class PosUI extends JFrame {
 	private static final Font BUTTON_FONT = new Font("Malgun Gothic", Font.BOLD, 14);
 	private static final Font TITLE_FONT = new Font("Malgun Gothic", Font.BOLD, 22);
 	private static final Font SECTION_FONT = new Font("Malgun Gothic", Font.BOLD, 15);
+	private static final Dimension STARTUP_SIZE = new Dimension(960, 760);
+	private static final Dimension MINIMUM_SIZE = new Dimension(860, 680);
 
 	private PosService service;
 
@@ -70,8 +72,8 @@ public class PosUI extends JFrame {
 		super("상품 POS");
 		setupLookAndFeel();
 		buildView();
-		setSize(850, 680); // 💡 테이블 가독성을 위해 창 크기를 살짝 넓혔습니다.
-		setMinimumSize(new Dimension(750, 580));
+		pack();
+		setMinimumSize(MINIMUM_SIZE);
 		setLocationRelativeTo(null);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
@@ -105,17 +107,18 @@ public class PosUI extends JFrame {
 		JPanel root = new JPanel(new BorderLayout(0, 14));
 		root.setBackground(BG);
 		root.setBorder(new EmptyBorder(18, 20, 18, 20));
+		root.setPreferredSize(STARTUP_SIZE);
 
 		root.add(headerPanel(), BorderLayout.NORTH);
 
 		JTabbedPane tabs = new JTabbedPane();
 		tabs.setBackground(BG);
-		tabs.addTab("회원", customerPanel());
-		tabs.addTab("상품 관리", productPanel()); // 명칭 직관화
-		tabs.addTab("결제", paymentPanel());
+		tabs.addTab("회원", tabScrollPane(customerPanel()));
+		tabs.addTab("상품 관리", tabScrollPane(productPanel())); // 명칭 직관화
+		tabs.addTab("결제", tabScrollPane(paymentPanel()));
 		root.add(tabs, BorderLayout.CENTER);
 
-		logTa = new JTextArea(6, 20);
+		logTa = new JTextArea(4, 20);
 		logTa.setEditable(false);
 		logTa.setLineWrap(true);
 		logTa.setWrapStyleWord(true);
@@ -128,6 +131,15 @@ public class PosUI extends JFrame {
 		root.add(logScroll, BorderLayout.SOUTH);
 
 		setContentPane(root);
+	}
+
+	private JScrollPane tabScrollPane(JPanel panel) {
+		JScrollPane scrollPane = new JScrollPane(panel);
+		scrollPane.setBorder(BorderFactory.createEmptyBorder());
+		scrollPane.getViewport().setBackground(BG);
+		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+		return scrollPane;
 	}
 
 	private JPanel headerPanel() {
@@ -212,8 +224,9 @@ public class PosUI extends JFrame {
 		};
 		productTable = new JTable(tableModel);
 		productTable.setRowHeight(22);
+		productTable.setFillsViewportHeight(true);
 		JScrollPane scrollPane = new JScrollPane(productTable);
-		scrollPane.setPreferredSize(new Dimension(500, 160));
+		scrollPane.setPreferredSize(new Dimension(820, 220));
 		tablePanel.add(scrollPane, BorderLayout.CENTER);
 
 		addSection(panel, stock);
