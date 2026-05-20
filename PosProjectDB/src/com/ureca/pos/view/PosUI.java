@@ -6,7 +6,10 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -22,9 +25,12 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 
 import com.ureca.pos.model.dto.Book;
@@ -38,12 +44,14 @@ public class PosUI extends JFrame {
 	private static final Color SUB_TEXT = new Color(107, 114, 128);
 	private static final Color PRIMARY = new Color(219, 234, 254);
 	private static final Color PRIMARY_DARK = new Color(147, 197, 253);
+	private static final Color DANGER = new Color(254, 226, 226);
+	private static final Color DANGER_DARK = new Color(248, 113, 113);
 	private static final Font BASE_FONT = new Font("Malgun Gothic", Font.PLAIN, 13);
 	private static final Font BUTTON_FONT = new Font("Malgun Gothic", Font.BOLD, 14);
 	private static final Font TITLE_FONT = new Font("Malgun Gothic", Font.BOLD, 22);
 	private static final Font SECTION_FONT = new Font("Malgun Gothic", Font.BOLD, 15);
-	private static final Dimension STARTUP_SIZE = new Dimension(960, 760);
-	private static final Dimension MINIMUM_SIZE = new Dimension(860, 680);
+	private static final Dimension STARTUP_SIZE = new Dimension(1100, 800);
+	private static final Dimension MINIMUM_SIZE = new Dimension(960, 700);
 
 	private PosService service;
 
@@ -56,6 +64,12 @@ public class PosUI extends JFrame {
 	private JTextField stockGoodsIdTf;
 	private JTextField stockAmountTf;
 	private JTextField expiryGoodsIdTf;
+	private JTextField productNameTf;
+	private JTextField productPublisherTf;
+	private JTextField productPriceTf;
+	private JTextField productStockTf;
+	private JTextField productExpireDateTf;
+	private JTextField deleteGoodsIdTf;
 
 	private JTextField payCustIdTf;
 	private JTextField payGoodsIdTf;
@@ -64,7 +78,6 @@ public class PosUI extends JFrame {
 
 	private JTextArea logTa;
 	
-	// 🌟 실시간 대시보드 표를 관리하기 위한 Swing 컴포넌트 추가
 	private JTable productTable;
 	private DefaultTableModel tableModel;
 
@@ -80,7 +93,6 @@ public class PosUI extends JFrame {
 
 	public void setModel(PosService service) {
 		this.service = service;
-		// 서비스 모델이 주입되는 시점에 표 데이터를 최초 1회 로드합니다.
 		refreshProductTable();
 	}
 
@@ -99,7 +111,6 @@ public class PosUI extends JFrame {
 			UIManager.put("Table.font", BASE_FONT);
 			UIManager.put("TableHeader.font", BASE_FONT);
 		} catch (Exception e) {
-			// Keep Swing's default look and feel if the system one is unavailable.
 		}
 	}
 
@@ -194,23 +205,61 @@ public class PosUI extends JFrame {
 	}
 
 	private JPanel productPanel() {
-		JPanel panel = tabPanel();
+		JPanel panel = new JPanel(new BorderLayout(0, 14));
+		panel.setBackground(BG);
+		panel.setBorder(new EmptyBorder(16, 0, 0, 0));
+
+		JPanel addProduct = sectionPanel("신규 상품 추가");
+		productNameTf = compactTextField();
+		productPublisherTf = compactTextField();
+		productPriceTf = compactTextField();
+		productStockTf = compactTextField("0");
+		productExpireDateTf = compactTextField("2026-12-31");
+		JButton addProductBt = primaryButton("상품 추가");
+		addProductBt.addActionListener(e -> addProduct());
+		addRow(addProduct, 0, "상품명", productNameTf, null);
+		addRow(addProduct, 1, "제조사", productPublisherTf, null);
+		addRow(addProduct, 2, "단가", productPriceTf, null);
+		addRow(addProduct, 3, "초기 재고", productStockTf, null);
+		addRow(addProduct, 4, "유통기한", productExpireDateTf, addProductBt);
 
 		JPanel stock = sectionPanel("상품 입고 및 조회");
-		stockGoodsIdTf = textField();
-		stockAmountTf = textField();
+		stockGoodsIdTf = compactTextField();
+		stockAmountTf = compactTextField();
 		JButton stockBt = primaryButton("재고 추가");
 		stockBt.addActionListener(e -> updateStock());
 		addRow(stock, 0, "상품 아이디", stockGoodsIdTf, null);
 		addRow(stock, 1, "입고 수량", stockAmountTf, stockBt);
 
 		JPanel expiry = sectionPanel("유통기한 확인");
-		expiryGoodsIdTf = textField();
+		expiryGoodsIdTf = compactTextField();
 		JButton expiryBt = primaryButton("확인");
 		expiryBt.addActionListener(e -> checkExpiry());
 		addRow(expiry, 0, "상품 아이디", expiryGoodsIdTf, expiryBt);
 
-		// 🌟 [핵심 보완] 실시간 전체 상품 재고 현황판 렌더링 영역 추가
+		JPanel delete = sectionPanel("상품 삭제");
+		deleteGoodsIdTf = compactTextField();
+		JButton deleteBt = dangerButton("삭제");
+		deleteBt.addActionListener(e -> deleteProduct());
+		addRow(delete, 0, "상품 아이디", deleteGoodsIdTf, deleteBt);
+
+		JPanel sideControls = new JPanel();
+		sideControls.setLayout(new BoxLayout(sideControls, BoxLayout.Y_AXIS));
+		sideControls.setOpaque(false);
+		prepareSideSection(stock);
+		prepareSideSection(expiry);
+		prepareSideSection(delete);
+		sideControls.add(stock);
+		sideControls.add(Box.createVerticalStrut(10));
+		sideControls.add(expiry);
+		sideControls.add(Box.createVerticalStrut(10));
+		sideControls.add(delete);
+
+		JPanel controls = new JPanel(new GridLayout(1, 2, 12, 0));
+		controls.setOpaque(false);
+		controls.add(addProduct);
+		controls.add(sideControls);
+
 		JPanel tablePanel = new JPanel(new BorderLayout());
 		tablePanel.setBackground(PANEL_BG);
 		tablePanel.setBorder(BorderFactory.createTitledBorder("실시간 매대 상품 재고 현황"));
@@ -219,21 +268,24 @@ public class PosUI extends JFrame {
 		tableModel = new DefaultTableModel(columns, 0) {
 			@Override
 			public boolean isCellEditable(int row, int column) {
-				return false; // 더블클릭해도 표 내용이 직접 수정되지 않도록 잠금
+				return false; 
 			}
 		};
 		productTable = new JTable(tableModel);
 		productTable.setRowHeight(22);
 		productTable.setFillsViewportHeight(true);
+		productTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		productTable.getSelectionModel().addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting() && productTable.getSelectedRow() >= 0) {
+				deleteGoodsIdTf.setText(String.valueOf(productTable.getValueAt(productTable.getSelectedRow(), 0)));
+			}
+		});
 		JScrollPane scrollPane = new JScrollPane(productTable);
 		scrollPane.setPreferredSize(new Dimension(820, 220));
 		tablePanel.add(scrollPane, BorderLayout.CENTER);
 
-		addSection(panel, stock);
-		addSection(panel, expiry);
-		
-		tablePanel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.add(tablePanel); // 전체 상품 레이아웃에 현황 표 투입
+		panel.add(controls, BorderLayout.NORTH);
+		panel.add(tablePanel, BorderLayout.CENTER);
 		return panel;
 	}
 
@@ -245,12 +297,15 @@ public class PosUI extends JFrame {
 		payGoodsIdTf = textField();
 		payQuantityTf = textField();
 		payTotalPriceTf = textField();
+		payTotalPriceTf.setEditable(false);
+		payTotalPriceTf.setBackground(new Color(249, 250, 251));
 		JButton payBt = primaryButton("결제");
 		payBt.addActionListener(e -> processPayment());
 		addRow(payment, 0, "회원 아이디", payCustIdTf, null);
-		addRow(payment, 1, "상품 아이디", payGoodsIdTf, null);
+		addRow(payment, 1, "상품명/아이디", payGoodsIdTf, null);
 		addRow(payment, 2, "수량", payQuantityTf, null);
-		addRow(payment, 3, "총 금액", payTotalPriceTf, payBt);
+		addRow(payment, 3, "총 금액(자동)", payTotalPriceTf, payBt);
+		installPaymentTotalCalculator();
 
 		addSection(panel, payment);
 		return panel;
@@ -269,6 +324,11 @@ public class PosUI extends JFrame {
 		section.setMaximumSize(new Dimension(Integer.MAX_VALUE, section.getPreferredSize().height));
 		parent.add(section);
 		parent.add(Box.createVerticalStrut(14));
+	}
+
+	private void prepareSideSection(JPanel section) {
+		section.setAlignmentX(LEFT_ALIGNMENT);
+		section.setMaximumSize(new Dimension(Integer.MAX_VALUE, section.getPreferredSize().height));
 	}
 
 	private JPanel sectionPanel(String titleText) {
@@ -331,9 +391,21 @@ public class PosUI extends JFrame {
 	}
 
 	private JTextField textField(String text) {
+		return textField(text, 260);
+	}
+
+	private JTextField compactTextField() {
+		return compactTextField("");
+	}
+
+	private JTextField compactTextField(String text) {
+		return textField(text, 125);
+	}
+
+	private JTextField textField(String text, int width) {
 		JTextField field = new JTextField(text, 20);
 		field.setForeground(TEXT);
-		field.setPreferredSize(new Dimension(260, 32));
+		field.setPreferredSize(new Dimension(width, 32));
 		field.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createLineBorder(new Color(209, 213, 219)),
 				new EmptyBorder(4, 8, 4, 8)));
@@ -370,22 +442,36 @@ public class PosUI extends JFrame {
 		return button;
 	}
 
+	private JButton dangerButton(String text) {
+		JButton button = new JButton(text);
+		button.setFont(BUTTON_FONT);
+		button.setForeground(Color.BLACK);
+		button.setBackground(DANGER);
+		button.setOpaque(true);
+		button.setContentAreaFilled(true);
+		button.setFocusPainted(false);
+		button.setPreferredSize(new Dimension(104, 34));
+		button.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(DANGER_DARK),
+				new EmptyBorder(6, 12, 6, 12)));
+		return button;
+	}
+
 	private JLabel spacerButtonSlot() {
 		JLabel label = new JLabel();
 		label.setPreferredSize(new Dimension(84, 32));
 		return label;
 	}
 
-	// 🌟 [추가 기능] 백엔드 데이터베이스 최신 상품 정보를 가져와 표를 갱신하는 실시간 동기화 스크립트
 	private void refreshProductTable() {
 		if (service == null || tableModel == null) return;
 		try {
-			tableModel.setRowCount(0); // 기존 테이블 열 목록 클리어
+			tableModel.setRowCount(0); 
 			List<Book> books = service.getAllProducts();
 			for (Book b : books) {
 				tableModel.addRow(new Object[]{
 					b.getBookid(),
-					b.getBookname(),  // Book DTO의 정의된 변수명에 맞게 매핑
+					b.getBookname(),  
 					b.getPublisher(),
 					b.getPrice(),
 					b.getStock(),
@@ -424,6 +510,58 @@ public class PosUI extends JFrame {
 		});
 	}
 
+	private void addProduct() {
+		runSafe(() -> {
+			Book book = new Book(
+					0,
+					required(productNameTf, "상품명"),
+					required(productPublisherTf, "제조사"),
+					parsePositiveInt(productPriceTf, "단가"),
+					parseNonNegativeInt(productStockTf, "초기 재고"),
+					requiredDate(productExpireDateTf, "유통기한"));
+
+			service.addProduct(book);
+			log("상품 등록 완료: 상품 아이디=" + book.getBookid() + " / " + book.getBookname() + " / 재고=" + book.getStock());
+			clearProductInputs();
+			refreshProductTable();
+		});
+	}
+
+	private void deleteProduct() {
+		runSafe(() -> {
+			int goodsId = parseInt(deleteGoodsIdTf, "상품 아이디");
+			Book book = service.findProductById(goodsId);
+			if (book == null) {
+				log("상품 삭제 취소: 상품 아이디 " + goodsId + "를 찾을 수 없습니다.");
+				showError("상품을 찾을 수 없습니다.");
+				return;
+			}
+
+			int orderCount = service.countProductOrders(goodsId);
+			if (orderCount > 0) {
+				log("상품 삭제 차단: " + productSummary(book) + " / 판매 이력 " + orderCount + "건");
+				showError("판매 이력 " + orderCount + "건이 있어 결제 기록 보호를 위해 삭제할 수 없습니다.");
+				return;
+			}
+
+			int answer = JOptionPane.showConfirmDialog(
+					this,
+					productSummary(book) + "\n\n이 상품을 삭제하면 복구할 수 없습니다.\n정말 삭제할까요?",
+					"상품 삭제 확인",
+					JOptionPane.YES_NO_OPTION,
+					JOptionPane.WARNING_MESSAGE);
+			if (answer != JOptionPane.YES_OPTION) {
+				log("상품 삭제 취소: " + productSummary(book));
+				return;
+			}
+
+			service.deleteProductSafely(goodsId);
+			deleteGoodsIdTf.setText("");
+			log("상품 삭제 완료: " + productSummary(book));
+			refreshProductTable();
+		});
+	}
+
 	private void updateStock() {
 		runSafe(() -> {
 			int goodsId = parseInt(stockGoodsIdTf, "상품 아이디");
@@ -431,7 +569,7 @@ public class PosUI extends JFrame {
 			service.updateProductStock(goodsId, amount);
 			log("재고 추가 완료: 상품 아이디=" + goodsId + ", 수량=" + amount);
 			
-			refreshProductTable(); // 🌟 데이터 변동이 생겼으므로 표 동기화 강제 새로고침!
+			refreshProductTable(); 
 		});
 	}
 
@@ -445,17 +583,85 @@ public class PosUI extends JFrame {
 		});
 	}
 
+	private void installPaymentTotalCalculator() {
+		DocumentListener listener = new DocumentListener() {
+			@Override
+			public void insertUpdate(DocumentEvent e) {
+				updatePaymentTotalQuietly();
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent e) {
+				updatePaymentTotalQuietly();
+			}
+
+			@Override
+			public void changedUpdate(DocumentEvent e) {
+				updatePaymentTotalQuietly();
+			}
+		};
+		payGoodsIdTf.getDocument().addDocumentListener(listener);
+		payQuantityTf.getDocument().addDocumentListener(listener);
+	}
+
+	private void updatePaymentTotalQuietly() {
+		if (service == null || payTotalPriceTf == null) return;
+
+		try {
+			String productText = payGoodsIdTf.getText().trim();
+			String quantityText = payQuantityTf.getText().trim();
+			if (productText.isEmpty() || quantityText.isEmpty()) {
+				clearPaymentTotal();
+				return;
+			}
+
+			int quantity = Integer.parseInt(quantityText);
+			if (quantity <= 0) {
+				clearPaymentTotal();
+				return;
+			}
+
+			Book product = resolvePaymentProduct(productText);
+			if (product == null) {
+				clearPaymentTotal();
+				return;
+			}
+
+			int totalPrice = calculatePaymentTotal(product, quantity);
+			payTotalPriceTf.setText(String.valueOf(totalPrice));
+			payTotalPriceTf.setToolTipText(product.getBookname() + " / 단가=" + product.getPrice() + " / 재고=" + product.getStock());
+		} catch (RuntimeException e) {
+			clearPaymentTotal();
+		}
+	}
+
+	private void clearPaymentTotal() {
+		payTotalPriceTf.setText("");
+		payTotalPriceTf.setToolTipText(null);
+	}
+
 	private void processPayment() {
 		runSafe(() -> {
 			int custId = parseInt(payCustIdTf, "회원 아이디");
-			int goodsId = parseInt(payGoodsIdTf, "상품 아이디");
-			int quantity = parseInt(payQuantityTf, "수량");
-			int totalPrice = parseInt(payTotalPriceTf, "총 금액");
-			boolean paid = service.processPayment(custId, goodsId, quantity, totalPrice);
+			String productText = required(payGoodsIdTf, "상품명 또는 상품 아이디");
+			Book product = resolvePaymentProduct(productText);
+			if (product == null) {
+				throw new IllegalArgumentException("상품을 찾을 수 없습니다.");
+			}
+
+			int quantity = parsePositiveInt(payQuantityTf, "수량");
+			if (quantity > product.getStock()) {
+				throw new IllegalArgumentException("재고가 부족합니다. 현재 재고=" + product.getStock());
+			}
+
+			int totalPrice = calculatePaymentTotal(product, quantity);
+			payTotalPriceTf.setText(String.valueOf(totalPrice));
+
+			boolean paid = service.processPayment(custId, product.getBookid(), quantity, totalPrice);
 			
 			if (paid) {
-				log("결제 완료");
-				refreshProductTable(); // 🌟 결제로 재고가 차감되었으므로 표 실시간 자동 갱신!
+				log("결제 완료: " + product.getBookname() + " / 수량=" + quantity + " / 총금액=" + totalPrice);
+				refreshProductTable();
 			} else {
 				log("결제 실패: 회원, 상품, 재고를 확인하세요.");
 			}
@@ -482,12 +688,72 @@ public class PosUI extends JFrame {
 		return value;
 	}
 
+	private String requiredDate(JTextField field, String label) {
+		String value = required(field, label);
+		try {
+			LocalDate.parse(value);
+			return value;
+		} catch (DateTimeParseException e) {
+			throw new IllegalArgumentException(label + "은 yyyy-MM-dd 형식으로 입력하세요.");
+		}
+	}
+
 	private int parseInt(JTextField field, String label) {
 		try {
 			return Integer.parseInt(required(field, label));
 		} catch (NumberFormatException e) {
 			throw new IllegalArgumentException(label + "은 숫자로 입력하세요.");
 		}
+	}
+
+	private int parsePositiveInt(JTextField field, String label) {
+		int value = parseInt(field, label);
+		if (value <= 0) {
+			throw new IllegalArgumentException(label + "는 1 이상으로 입력하세요.");
+		}
+		return value;
+	}
+
+	private int parseNonNegativeInt(JTextField field, String label) {
+		int value = parseInt(field, label);
+		if (value < 0) {
+			throw new IllegalArgumentException(label + "는 0 이상으로 입력하세요.");
+		}
+		return value;
+	}
+
+	private Book resolvePaymentProduct(String productText) {
+		String value = productText.trim();
+		if (value.isEmpty()) return null;
+
+		Book product = null;
+		try {
+			product = service.findProductById(Integer.parseInt(value));
+		} catch (NumberFormatException e) {
+			// 숫자가 아니면 상품명으로 조회합니다.
+		}
+
+		return product != null ? product : service.findProductByName(value);
+	}
+
+	private int calculatePaymentTotal(Book product, int quantity) {
+		long total = (long) product.getPrice() * quantity;
+		if (total > Integer.MAX_VALUE) {
+			throw new IllegalArgumentException("총 금액이 너무 큽니다.");
+		}
+		return (int) total;
+	}
+
+	private String productSummary(Book book) {
+		return "상품 아이디 " + book.getBookid() + " / " + book.getBookname();
+	}
+
+	private void clearProductInputs() {
+		productNameTf.setText("");
+		productPublisherTf.setText("");
+		productPriceTf.setText("");
+		productStockTf.setText("0");
+		productExpireDateTf.setText("2026-12-31");
 	}
 
 	private void log(String message) {
