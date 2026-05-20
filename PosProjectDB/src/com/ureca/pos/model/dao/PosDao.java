@@ -3,7 +3,6 @@ package com.ureca.pos.model.dao;
 import java.sql.SQLException;
 import java.util.List;
 
-import com.ureca.pos.model.dto.Customer;
 import com.ureca.pos.model.dto.Book;
 import com.ureca.pos.model.dto.Customer;
 public interface PosDao {
@@ -18,4 +17,9 @@ public interface PosDao {
 	void updateProductStock(int bookId, int amount) throws SQLException; // 물류 재고 보충
 	
 	List<Book> getAllProducts() throws SQLException;
+	void addProduct(Book book) throws SQLException;
+	Book findProductById(int bookId) throws SQLException;
+	Book findProductByName(String bookName) throws SQLException;
+	int countProductOrders(int bookId) throws SQLException;
+	void deleteProduct(int bookId) throws SQLException;
 }
